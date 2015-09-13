@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+<link href="css/bootstrap.css" rel="stylesheet" type="text/css"/>
+</head>
+<body ng-app="restApp">
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="#">
+        REST
+      </a>
+    </div>
+  </div>
+</nav>
+<div class="container" ng-controller="restController" ng-init="Init();">
+	<div class="row">
+		<div class="col-md-6">
+		<h3>Letzte Aktualisierung {{szLastSync |  date:'HH:mm:ss'}}</h3>
+		<button class="btn btn-default btn-block" ng-click="Init();">Sync</button>
+		<br>
+			<table class="table table-bordered table-striped">
+				<thead>
+					<tr>
+						<th>Vorname</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-repeat="benutzer in arBenutzer">
+						<td>
+							{{benutzer.vorname}}
+						</td>
+						<td>
+							<button type="button" class="btn btn-danger" ng-click="Delete(benutzer.id);">Delete</button>
+							<button type="button" class="btn btn-primary" ng-click="Edit(benutzer);">Edit</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div class="col-md-6">
+		<div class="form form-horizontal">
+			<div class="form-group">
+				<label class="col-md-4 control-label">Vorname</label>
+				<div class="col-md-8">
+					<input type="text" class="form-control" ng-model="objBenutzer.vorname" />
+				</div>
+			</div>
+			<div class="form-group">
+			<div class="col-md-8 col-md-push-4">
+			
+			<button type="button" class="btn btn-success btn-block" ng-click="Create();" ng-show="bShowAdd">Hinzufügen</button>
+			<button type="button" class="btn btn-primary btn-block" ng-click="Update();" ng-show="bShowEdit">Ändern</button>
+			<button type="button" class="btn btn-danger btn-block" ng-click="Cancel();" ng-show="bShowCancel">Abbrechen</button>
+			</div>
+			</div>
+		
+		</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript" src="js/angular.js">
+</script>
+<script>
+	
+	// Applikation wird initialisiert
+	var app = angular.module('restApp', []);
+	
+	app.controller('restController', function($scope,$http) 
+	{
+		// Array
+	   	$scope.arBenutzer = [];
+	   	// Objekt 
+		$scope.objBenutzer;
+		// Bool -> Zeige "Ändern" Button
+		$scope.bShowEdit = false;
+		// Bool -> Zeige "Hinzufügen" Button
+		$scope.bShowAdd = true;
+		// Bool -> Zeige "Abbrechen" Button
+		$scope.bShowCancel = false;
+
+		// String -> Zeigt letzte Aktualisierung an
+		$scope.szLastSync;
+
+	   	// Function -> Lädt die Daten aus der Datenbank über AJAX in das Array "arBenutzer"
+	   	$scope.Init = function()
+	   	{
+		   	// AJAX call 
+		   	$http.get('rest/benutzer').
+		   	  then(function(response) 
+		 	  {
+			 	 // Array wird mit Daten befüllt
+			 	 $scope.arBenutzer = response.data;
+
+			 	 $scope.szLastSync = new Date();
+		   	  }, 
+		   	  function(response) 
+		   	  {
+			   	 // TODO: ErrorHandling 
+		   	     console.log("error");
+		   	  });
+		}
+
+		
+		// Function -> Löscht einen Benutzer aus der Datenbank
+		$scope.Delete = function(id)
+		{
+
+			// AJAX call
+			$http.delete('rest/benutzer/'+id).
+		   	  then(function(response) 
+		 	  {
+			 	  // Init call -> Aktualisiert die Tabelle
+			 	  $scope.Init();
+		   	  }, 
+		   	  function(response) 
+		   	  {
+		   		 // TODO: ErrorHandling 
+		   	     console.log("error");
+		   	  });
+		}
+
+		// Function -> Erstellt einen Benutzer und speichert diesen in der Datenbank
+		$scope.Create = function()
+		{
+			// Wenn in der TextBox ein Wert vorhanden ist
+			if($scope.objBenutzer.vorname != null)
+			{
+				// AJAX call
+				$http.post('rest/benutzer', $scope.objBenutzer).
+				  then(function(response) 
+				  {
+					// Init call -> Aktualisiert die Tabelle 
+				 	$scope.Init();
+				 	// Objekt wird neu initialisiert
+				 	$scope.objBenutzer = {};
+				  }, 
+				  function(response) 
+				  {
+					  // TODO: ErrorHandling 
+					  console.log("error");
+				  });
+			}	
+		}
+
+		// Function -> Lädt das ausgewählte Objekt aus der Tabelle in die TextBox
+		$scope.Edit = function(benutzer)
+		{
+			// Objekt wird zugewießen
+			$scope.objBenutzer = benutzer;
+			// "Ändern" Button wird angezeigt
+			$scope.bShowEdit = true;
+			// "Hinzufügen" Button wird versteckt
+			$scope.bShowAdd = false;
+			// "Abbrechen" Button wird angezeigt
+			$scope.bShowCancel = true;
+		}
+
+		// Function -> Aktualisiert einen vorhanden Eintrag in der Datenbank
+		$scope.Update = function()
+		{
+			// Wenn das ausgewählte Objekt nicht null ist
+			if($scope.objBenutzer != null)
+			{
+				// AJAX call
+				$http.put('rest/benutzer/'+$scope.objBenutzer.id, $scope.objBenutzer).
+				  then(function(response) 
+				  {
+					// RollbackCancel call -> Bearbeitungsmodus wird abgebrochen
+					$scope.RollbackCancel();
+					// Init call -> Aktualisiert die Tabelle 
+				 	$scope.Init();
+				 	
+				  }, function(response) 
+				  {
+					 // TODO: ErrorHandling 
+					 console.log("error");
+				  });
+			}	
+		}
+
+		// Function -> Bricht einen Bearbeitungsvorgang ab
+		$scope.Cancel = function()
+		{
+			// RollbackCancel call -> Bearbeitungsmodus wird abgebrochen
+			$scope.RollbackCancel();
+			// Init call -> Aktualisiert die Tabelle 
+			$scope.Init();
+		}
+
+		$scope.RollbackCancel = function()
+		{
+			// Objekt wird neu initialisiert
+		 	$scope.objBenutzer = {};
+		 	// "Ändern" Button wird versteckt
+		 	$scope.bShowEdit = false;
+		 	// "Hinzufügen" Button wird angezeigt
+			$scope.bShowAdd = true;
+			// "Abbrechen" Button wird versteckt
+			$scope.bShowCancel = false;
+		}
+	});
+</script>
+</body>
+</html>
